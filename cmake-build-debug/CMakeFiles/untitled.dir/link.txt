@@ -1,0 +1,1 @@
+/usr/bin/g++  -g   CMakeFiles/untitled.dir/main.cpp.o CMakeFiles/untitled.dir/myshell.cpp.o  -o untitled 
