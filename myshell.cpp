@@ -6,26 +6,41 @@ myshell::myshell( void ) {
 
 void myshell::run( void ) {
     std::vector<std::string> tokens;
+    std::vector<Command> commands;
     std::cout << "Welcome to myshell" << std::endl;
+
     do {
         std::cout << "ms>";
         getline(std::cin, input);
+
+        if ( input == "exit" ) break;
+
         tokens = tokenizor::tokenize( input );
-        interpretor::interpret( tokens );
-    } while ( input != "exit" );
+        commands = interpretor::interpret( tokens );
+        execute( commands );
+    } while ( true );
 }
 
-std::vector<char> tokenizor::tokenizeArgs( const std::string &s ) {
-    // expects the first letter to be '-'
-    // returns each argument as
-
-    std::vector<char> tokens;
-
-    for ( int i = 1; i < s.length(); ++i ) {
-        tokens.push_back( s[i] );
+void myshell::execute( const std::vector<Command> &coms ) {
+    pid = fork();
+    if ( pid < 0 ) {
+        fprintf( stderr, "Fork Failed");
     }
+    if ( pid == 0 ) {
 
-    return tokens;
+        char** arr = new char*[coms[0].args.size() + 1];
+        for ( int j = 0; j < coms[0].args.size(); ++j) {
+            arr[j] = (char*)(coms[0].args[j].c_str());
+        }
+
+        arr[coms[0].args.size()] = nullptr;
+
+
+        execvp( coms[0].name.c_str(), arr );
+    }
+    else {
+        wait(NULL);
+    }
 }
 
 std::vector<std::string> tokenizor::tokenize(const std::string &s) {
@@ -61,18 +76,13 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
             // looking for file names
 
             temp_command.name = command[i];
+            temp_command.args.push_back( command[i] );
             looking_for_first_comm = false;
         }
         else
         {
             // looking for arguments or redirects/pipes
-            if ( command[i][0] == '-' )
-            {
-                // argument
-                std::vector<char> rgs = tokenizor::tokenizeArgs( command[i] );
-                temp_command.cargs.insert( temp_command.cargs.end(), rgs.begin(), rgs.end() );
-            }
-            else if ( command[i][0] == '|' )
+            if ( command[i][0] == '|' )
             {
                 looking_for_first_comm = true;
                 command_list.push_back(temp_command);
@@ -95,27 +105,17 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
             }
             else
             {
-                temp_command.sargs.push_back( command[i] );
+                temp_command.args.push_back( command[i] );
             }
         }
     }
 
+    //temp_command.args.push_back( nullptr );
     command_list.push_back( temp_command );
 
 //    for ( int i = 0; i < command_list.size(); ++i ) {
 //        std::cout << "Command: "<< command_list[i].name << " " << command_list[i].pd << std::endl;
-//
-//        std::cout << "c args: ";
-//        for ( int j = 0; j < command_list[i].cargs.size(); ++j ) {
-//            std::cout << command_list[i].cargs[j] << " ";
-//        }
-//        std::cout << std::endl;
-//
-//        std::cout << "s args: ";
-//        for ( int j = 0; j < command_list[i].sargs.size(); ++j ) {
-//            std::cout << command_list[i].sargs[j] << " ";
-//        }
-//        std::cout << std::endl;
+//        std::cout << "args: " << command_list[i].args << std::endl;
 //    }
 
     return command_list;

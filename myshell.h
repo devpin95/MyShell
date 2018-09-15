@@ -5,17 +5,17 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <wait.h>
+#include <unistd.h>
 
 struct Command {
     std::string name;
-    std::vector<char> cargs;
-    std::vector<std::string> sargs;
+    std::vector<std::string> args;
     char pd = '\0';
 
     void clear( void ) {
         name = "";
-        cargs.clear();
-        sargs.clear();
+        args.clear();
         pd = '\0';
     };
 };
@@ -29,7 +29,6 @@ struct executer {
 };
 
 struct tokenizor {
-    static std::vector<char> tokenizeArgs( const std::string &s );
     static std::vector<std::string> tokenize( const std::string &s );
 };
 
@@ -37,10 +36,10 @@ class myshell {
 public:
     myshell( void );
     void run( void );
+    void execute( const std::vector<Command> &coms );
 private:
     std::string input;
-
-    interpretor intr;
+    int pid=0;
 };
 
 #endif //MYSHELL_H
