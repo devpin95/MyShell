@@ -44,27 +44,23 @@ std::vector<std::string> tokenizor::tokenize(const std::string &s) {
     return tokens;
 }
 
-int interpretor::interpret( const std::vector<std::string> &command ) {
+std::vector<Command> interpretor::interpret( const std::vector<std::string> &command ) {
     // branches the program based on the command passed in
     // types of commands:
     //      single word commands (ls, pwd, etc.)
     //      single commands w/ arguments (ls -a)
 
     bool looking_for_first_comm = true;
-    bool looking_for_arguments = true;
-    bool has_pipe = false;
-    bool has_directional = false;
 
-    proc first_proc;
+    std::vector<Command> command_list;
+    Command temp_command;
 
     for ( int i = 0; i < command.size(); ++i ) {
         if ( looking_for_first_comm ) {
             // looking for file names
 
-            first_proc.name = command[i];
+            temp_command.name = command[i];
             looking_for_first_comm = false;
-
-            std::cout << "Command: " << command[i] << std::endl;
         }
         else
         {
@@ -73,39 +69,51 @@ int interpretor::interpret( const std::vector<std::string> &command ) {
             {
                 // argument
                 std::vector<char> rgs = tokenizor::tokenizeArgs( command[i] );
-                first_proc.cargs.insert( first_proc.cargs.end(), rgs.begin(), rgs.end() );
+                temp_command.cargs.insert( temp_command.cargs.end(), rgs.begin(), rgs.end() );
             }
             else if ( command[i][0] == '|' )
             {
-                std::cout << "pipey boi: " << command[i] << std::endl;
                 looking_for_first_comm = true;
+                command_list.push_back(temp_command);
+                temp_command.clear();
+                temp_command.pd = '|';
             }
             else if ( command[i][0] == '<' )
             {
-                std::cout << "arrow boi left: " << command[i] << std::endl;
                 looking_for_first_comm = true;
+                command_list.push_back(temp_command);
+                temp_command.clear();
+                temp_command.pd = '<';
             }
             else if ( command[i][0] == '>' )
             {
-                std::cout << "arrow boi right: " << command[i] << std::endl;
                 looking_for_first_comm = true;
+                command_list.push_back(temp_command);
+                temp_command.clear();
+                temp_command.pd = '>';
             }
             else
             {
-                first_proc.sargs.push_back( command[i] );
+                temp_command.sargs.push_back( command[i] );
             }
         }
     }
 
-    std::cout << "c args: ";
-    for ( int j = 0; j < first_proc.cargs.size(); ++j ) {
-        std::cout << first_proc.cargs[j] << " ";
-    }
-    std::cout << std::endl;
+    command_list.push_back( temp_command );
 
-    std::cout << "s args: ";
-    for ( int j = 0; j < first_proc.sargs.size(); ++j ) {
-        std::cout << first_proc.sargs[j] << " ";
+    for ( int i = 0; i < command_list.size(); ++i ) {
+        std::cout << "Command: "<< command_list[i].name << " " << command_list[i].pd << std::endl;
+
+        std::cout << "c args: ";
+        for ( int j = 0; j < command_list[i].cargs.size(); ++j ) {
+            std::cout << command_list[i].cargs[j] << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "s args: ";
+        for ( int j = 0; j < command_list[i].sargs.size(); ++j ) {
+            std::cout << command_list[i].sargs[j] << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
