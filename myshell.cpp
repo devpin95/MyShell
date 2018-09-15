@@ -5,13 +5,13 @@ myshell::myshell( void ) {
 }
 
 void myshell::run( void ) {
-    std::vector<std::string> tkns;
+    std::vector<std::string> tokens;
     std::cout << "Welcome to myshell" << std::endl;
     do {
         std::cout << "ms>";
         getline(std::cin, input);
-        tkns = tknzr.tokenize( input );
-        interpretor::interpret( tkns );
+        tokens = tokenizor::tokenize( input );
+        interpretor::interpret( tokens );
     } while ( input != "exit" );
 }
 
@@ -56,7 +56,8 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
     Command temp_command;
 
     for ( int i = 0; i < command.size(); ++i ) {
-        if ( looking_for_first_comm ) {
+        if ( looking_for_first_comm )
+        {
             // looking for file names
 
             temp_command.name = command[i];
@@ -101,19 +102,21 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
 
     command_list.push_back( temp_command );
 
-    for ( int i = 0; i < command_list.size(); ++i ) {
-        std::cout << "Command: "<< command_list[i].name << " " << command_list[i].pd << std::endl;
+//    for ( int i = 0; i < command_list.size(); ++i ) {
+//        std::cout << "Command: "<< command_list[i].name << " " << command_list[i].pd << std::endl;
+//
+//        std::cout << "c args: ";
+//        for ( int j = 0; j < command_list[i].cargs.size(); ++j ) {
+//            std::cout << command_list[i].cargs[j] << " ";
+//        }
+//        std::cout << std::endl;
+//
+//        std::cout << "s args: ";
+//        for ( int j = 0; j < command_list[i].sargs.size(); ++j ) {
+//            std::cout << command_list[i].sargs[j] << " ";
+//        }
+//        std::cout << std::endl;
+//    }
 
-        std::cout << "c args: ";
-        for ( int j = 0; j < command_list[i].cargs.size(); ++j ) {
-            std::cout << command_list[i].cargs[j] << " ";
-        }
-        std::cout << std::endl;
-
-        std::cout << "s args: ";
-        for ( int j = 0; j < command_list[i].sargs.size(); ++j ) {
-            std::cout << command_list[i].sargs[j] << " ";
-        }
-        std::cout << std::endl;
-    }
+    return command_list;
 }

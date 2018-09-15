@@ -24,6 +24,10 @@ struct interpretor {
     static std::vector<Command> interpret( const std::vector<std::string> &command );
 };
 
+struct executer {
+    static int execute();
+};
+
 struct tokenizor {
     static std::vector<char> tokenizeArgs( const std::string &s );
     static std::vector<std::string> tokenize( const std::string &s );
@@ -37,7 +41,6 @@ private:
     std::string input;
 
     interpretor intr;
-    tokenizor tknzr;
 };
 
 #endif //MYSHELL_H
