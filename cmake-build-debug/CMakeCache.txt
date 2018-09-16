@@ -144,7 +144,7 @@ CMAKE_OBJCOPY:FILEPATH=/usr/bin/objcopy
 CMAKE_OBJDUMP:FILEPATH=/usr/bin/objdump
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=untitled
+CMAKE_PROJECT_NAME:STATIC=myshell
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -210,6 +210,12 @@ ProcessorCount_cmd_getconf:FILEPATH=/usr/bin/getconf
 
 //Path to a program.
 ProcessorCount_cmd_sysctl:FILEPATH=/sbin/sysctl
+
+//Value Computed by CMake
+myshell_BINARY_DIR:STATIC=/home/devpin/CLionProjects/myshell/cmake-build-debug
+
+//Value Computed by CMake
+myshell_SOURCE_DIR:STATIC=/home/devpin/CLionProjects/myshell
 
 //Value Computed by CMake
 untitled_BINARY_DIR:STATIC=/home/devpin/CLionProjects/myshell/cmake-build-debug

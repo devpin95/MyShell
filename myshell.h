@@ -7,6 +7,8 @@
 #include <sstream>
 #include <wait.h>
 #include <unistd.h>
+#include <fstream>
+#include <fcntl.h>
 
 struct Command {
     std::string name;
@@ -24,10 +26,6 @@ struct interpretor {
     static std::vector<Command> interpret( const std::vector<std::string> &command );
 };
 
-struct executer {
-    static int execute();
-};
-
 struct tokenizor {
     static std::vector<std::string> tokenize( const std::string &s );
 };
@@ -37,9 +35,15 @@ public:
     myshell( void );
     void run( void );
     void execute( const std::vector<Command> &coms );
+    int do_fork(
+            int infd,
+            int outfd,
+            const Command &com,
+            std::string filename = "",
+            bool redirect_in = false,
+            bool redirect_out = false );
 private:
     std::string input;
-    int pid=0;
 };
 
 #endif //MYSHELL_H

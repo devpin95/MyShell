@@ -22,25 +22,132 @@ void myshell::run( void ) {
 }
 
 void myshell::execute( const std::vector<Command> &coms ) {
-    pid = fork();
-    if ( pid < 0 ) {
-        fprintf( stderr, "Fork Failed");
-    }
-    if ( pid == 0 ) {
 
-        char** arr = new char*[coms[0].args.size() + 1];
-        for ( int j = 0; j < coms[0].args.size(); ++j) {
-            arr[j] = (char*)(coms[0].args[j].c_str());
+    auto n = coms.size();
+    bool last_is_redirect = false;
+    int fd[2] = {0, };
+    int in = 0;
+    int i;
+
+    // loop through
+    for ( i = 0; i < n - 1; ++i ) {
+        if (  i + 1 < n ) {
+            if ( coms[i+1].pd == '|' ) {
+                // Handle piping between commands
+                pipe( fd );
+
+                do_fork( in, fd[1], coms[i] );
+
+                close(fd[1]);
+                in = fd[0];
+            }
+            else if ( coms[i+1].pd == '<' ) {
+                // handle redirection from a file
+                // This means the last command is a file name and we don't want to exec it
+                last_is_redirect = true;
+            }
+            else if ( coms[i+1].pd == '>' ) {
+                // handle redirection to a file
+                // This means the last command is a file name and we don't want to exec it
+                last_is_redirect = true;
+//                int ffd = open( coms[i+1].name.c_str(), O_CREAT | O_TRUNC , 0600);
+
+                waitpid( do_fork( in, STDOUT_FILENO, coms[i], coms[i+1].name, false, true ), NULL, 0 );
+
+//                close(ffd);
+//                in = fd[0];
+            }
+        }
+    }
+
+    if ( !last_is_redirect ) {
+        // only do this if the last command is not a redirect
+        waitpid(do_fork(in, STDOUT_FILENO, coms[i]), NULL, 0);
+    }
+
+//    pid = fork();
+//    if ( pid < 0 ) {
+//        fprintf( stderr, "Fork Failed");
+//    }
+//    if ( pid == 0 ) {
+//
+//        char** arr = new char*[coms[0].args.size() + 1];
+//        for ( int j = 0; j < coms[0].args.size(); ++j) {
+//            arr[j] = (char*)(coms[0].args[j].c_str());
+//        }
+//
+//        arr[coms[0].args.size()] = nullptr;
+//
+//
+//        execvp( coms[0].name.c_str(), arr );
+//    }
+//    else {
+//        wait(NULL);
+//    }
+}
+
+int myshell::do_fork(
+        int infd,
+        int outfd,
+        const Command &com,
+        std::string filename, // = ""
+        bool redirect_in, // = false
+        bool redirect_out // = false
+        ) {
+
+    pid_t pid;
+    int redirect_fd;
+    pid = fork();
+
+    if ( pid == 0 ) {
+        bool somename = true;
+//        while (somename) {
+//            somename = true;
+//            struct timespec tt { 1, 0 };
+//            nanosleep(&tt, nullptr);
+//        }
+        if ( infd != 0 ) {
+            // redirect stdin to infd
+            dup2( infd, STDIN_FILENO );
         }
 
-        arr[coms[0].args.size()] = nullptr;
+        if ( outfd != 1 ) {
+            // redirect stdout to outfd
+            dup2( outfd, STDOUT_FILENO );
+        }
 
+        if ( redirect_out ) {
+            // redirecting output to file
+            int ret;
 
-        execvp( coms[0].name.c_str(), arr );
+            redirect_fd = open( filename.c_str(), O_CREAT, 0600 );
+
+            if ( redirect_fd == -1 ) {
+                perror("error a");
+            }
+
+            fprintf(stderr, "%d\n", redirect_fd);
+
+            ret = dup2( redirect_fd, STDOUT_FILENO );
+
+            if ( ret == -1 ) {
+                perror("error f");
+            }
+
+            fprintf(stderr, "%d\n", ret);
+            close(redirect_fd);
+        }
+
+        char** arr = new char*[com.args.size() + 1];
+        for ( int j = 0; j < com.args.size(); ++j) {
+            arr[j] = (char*)(com.args[j].c_str());
+        }
+        arr[com.args.size()] = nullptr;
+
+        return execvp( com.name.c_str(), arr );
     }
-    else {
-        wait(NULL);
-    }
+
+    return pid;
 }
 
 std::vector<std::string> tokenizor::tokenize(const std::string &s) {
