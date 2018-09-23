@@ -10,6 +10,7 @@
 #include <fstream>
 #include <fcntl.h>
 #include <climits>
+#include <cstring>
 
 struct Command {
     std::string name;
@@ -48,7 +49,7 @@ public:
             int pwrite_to = 1);
 private:
     std::string input;
-    char *cwd[PATH_MAX] = {0, };
+    char cwd[PATH_MAX] = {0, };
 };
 
 #endif //MYSHELL_H

@@ -1,13 +1,11 @@
-#include <cstring>
 #include "myshell.h"
 
 myshell::myshell( void ) {
     std::cout << "Starting myshell" << std::endl;
+    getcwd(cwd, PATH_MAX);
 }
 
 void myshell::run( void ) {
-
-//    getcwd(cwd, PATH_MAX);
 
     std::vector<std::string> tokens;
     std::vector<Command> commands;
@@ -45,10 +43,12 @@ void myshell::execute( const std::vector<Command> &coms ) {
 
     // loop through
     for ( int i = 0; i < n; ++i ) {
-        temp_com = coms[i];
-        bool redirect_out = false;
-        bool redirect_in = false;
-        std::string filename;
+        temp_com = coms[i];             // keep a temp command so that we can inc i in the loop
+        bool redirect_out = false;      // bool indicating we're redirecting to a file
+        bool redirect_in = false;       // bool indicating we're redirecting from a file
+        std::string infilename;         // the file we are redirecting from
+        std::string outfilename;        // the file we are redirecting to
+        std::string procfilename;       // te file that we need to send to the child process
 
         if ( i + 1 < n ) {
             pipe(fd);
@@ -62,7 +62,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
             else if (coms[i + 1].pd == '<')
             {
                 redirect_in = true;
-                filename = coms[i + 1].name;
+                infilename = coms[i + 1].name;
 
                 // otherwise, the next command is a redirect
                 if (i + 2 < n && coms[i + 2].pd == '|')
@@ -73,15 +73,26 @@ void myshell::execute( const std::vector<Command> &coms ) {
                 else if ( i + 2 < n && coms[i + 2].pd == '>' )
                 {
                     // redirecting out after redirecting in
+                    // otherwise, we are at the end
+                    read_from = fd[PIPE_READ_END];      // we want to proc to read from here
+                    pread_from = fd[PIPE_READ_END];     // save the read end of the pipe
+                    parent_write = fd[PIPE_WRITE_END];  // we want the parent to write here
+                    pwrite_to = fd[PIPE_WRITE_END];     // save the write end of the pipe
+                    write_to = STDOUT_FILENO;           // we want the proc to write here
+
+                    redirect_out = true;
+                    outfilename = coms[i + 2].name;
+                    procfilename = outfilename;
+                    i += 1;
                 }
                 else
                 {
                     // otherwise, we are at the end
-                    read_from = fd[PIPE_READ_END];
-                    pread_from = fd[PIPE_READ_END];
-                    parent_write = fd[PIPE_WRITE_END];
-                    pwrite_to = fd[PIPE_WRITE_END];
-                    write_to = STDOUT_FILENO;
+                    read_from = fd[PIPE_READ_END];      // we want to proc to read from here
+                    pread_from = fd[PIPE_READ_END];     // save the read end of the pipe
+                    parent_write = fd[PIPE_WRITE_END];  // we want the parent to write here
+                    pwrite_to = fd[PIPE_WRITE_END];     // save the write end of the pipe
+                    write_to = STDOUT_FILENO;           // we want the proc to write here
                 }
 
                 i += 1;
@@ -89,7 +100,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
             else if (coms[i + 1].pd == '>')
             {
                 redirect_out = true;
-                filename = coms[i + 1].name;
+                procfilename = coms[i + 1].name;
                 write_to = STDOUT_FILENO;
                 i += 2;
             }
@@ -99,10 +110,11 @@ void myshell::execute( const std::vector<Command> &coms ) {
             write_to = STDOUT_FILENO;
         }
 
-        pid = doFork(read_from, write_to, temp_com, filename, redirect_in, redirect_out, pread_from, pwrite_to);
+        pid = doFork(read_from, write_to, temp_com, procfilename, redirect_in, redirect_out, pread_from, pwrite_to);
 
         if ( pid == -1 ) {
             perror("Error forking");
+            return;
         }
 
         if ( redirect_in ) {
@@ -110,7 +122,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
             size_t bufsize = 1000;
             char buf[bufsize];
 
-            int redirect_fd = open( filename.c_str(), O_RDONLY );
+            int redirect_fd = open( infilename.c_str(), O_RDONLY );
 
             if ( redirect_fd == -1 ) {
                 perror("error redirecting");
@@ -148,43 +160,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
         if ( i == n - 1 ) {
             waitpid(pid, NULL, 0);
         }
-
-//            if ( coms[i+1].pd == '|' ) {
-//                // Handle piping between commands
-//                pipe( fd );
-//
-//                doFork(in, fd[1], coms[i]);
-//
-//                close(fd[1]);
-//                in = fd[0];
-//            }
-//            else if ( coms[i+1].pd == '<' ) {
-//                // handle redirection from a file
-//                // This means the last command is a file name and we don't want to exec it
-//                ++i;
-//                if ( i >= n - 1 ) {
-//                    last_is_redirect = true;
-//
-//                    waitpid(doFork(in, STDOUT_FILENO, coms[i], coms[i + 1].name, true, false), NULL, 0 );
-//                }
-//            }
-//            else if ( coms[i+1].pd == '>' ) {
-//                // handle redirection to a file
-//                // This means the last command is a file name and we don't want to exec it
-//                last_is_redirect = true;
-//
-//                waitpid(doFork(in, STDOUT_FILENO, coms[i], coms[i + 1].name, false, true), NULL, 0 );
-//
-//                close(ffd);
-//                in = fd[0];
-//            }
-//        }
     }
-
-//    if ( !last_is_redirect ) {
-//        // only do this if the last command is not a redirect
-//        waitpid(doFork(in, STDOUT_FILENO, coms[i]), NULL, 0);
-//    }
 }
 
 bool myshell::validCommand(const std::vector<Command> &coms) {
@@ -350,7 +326,9 @@ int myshell::doFork(
         }
         arr[com.args.size()] = nullptr;
 
-        return execvp( com.name.c_str(), arr );
+        execvp( com.name.c_str(), arr );
+        perror("failed exec");
+        exit(127);
     }
 
     return pid;
