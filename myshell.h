@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <fcntl.h>
+#include <climits>
 
 struct Command {
     std::string name;
@@ -35,15 +36,17 @@ public:
     myshell( void );
     void run( void );
     void execute( const std::vector<Command> &coms );
-    int do_fork(
-            int infd,
-            int outfd,
+    bool validCommand(const std::vector<Command> &coms);
+    int doFork(
+            int read_from,
+            int write_to,
             const Command &com,
             std::string filename = "",
             bool redirect_in = false,
-            bool redirect_out = false );
+            bool redirect_out = false);
 private:
     std::string input;
+    char *cwd[PATH_MAX] = {0, };
 };
 
 #endif //MYSHELL_H
