@@ -43,7 +43,9 @@ public:
             const Command &com,
             std::string filename = "",
             bool redirect_in = false,
-            bool redirect_out = false);
+            bool redirect_out = false,
+            int pread_from = 0,
+            int pwrite_to = 1);
 private:
     std::string input;
     char *cwd[PATH_MAX] = {0, };

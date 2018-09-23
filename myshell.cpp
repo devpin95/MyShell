@@ -14,7 +14,7 @@ void myshell::run( void ) {
     std::cout << "Welcome to myshell" << std::endl;
 
     do {
-        std::cout << "ms>";
+        std::cout << std::endl << "ms>";
         getline(std::cin, input);
 
         if ( input == "exit" ) break;
@@ -36,6 +36,8 @@ void myshell::execute( const std::vector<Command> &coms ) {
     int fd[2] = {0, };
     int write_to = 1;
     int read_from = 0;
+    int pwrite_to = 1;
+    int pread_from = 0;
     int parent_write = 0;
     //int i;
     int pid = 0;
@@ -76,11 +78,13 @@ void myshell::execute( const std::vector<Command> &coms ) {
                 {
                     // otherwise, we are at the end
                     read_from = fd[PIPE_READ_END];
+                    pread_from = fd[PIPE_READ_END];
                     parent_write = fd[PIPE_WRITE_END];
+                    pwrite_to = fd[PIPE_WRITE_END];
                     write_to = STDOUT_FILENO;
                 }
 
-                i += 2;
+                i += 1;
             }
             else if (coms[i + 1].pd == '>')
             {
@@ -95,7 +99,11 @@ void myshell::execute( const std::vector<Command> &coms ) {
             write_to = STDOUT_FILENO;
         }
 
-        pid = doFork(read_from, write_to, temp_com, filename, redirect_in, redirect_out);
+        pid = doFork(read_from, write_to, temp_com, filename, redirect_in, redirect_out, pread_from, pwrite_to);
+
+        if ( pid == -1 ) {
+            perror("Error forking");
+        }
 
         if ( redirect_in ) {
             ssize_t size;
@@ -129,22 +137,17 @@ void myshell::execute( const std::vector<Command> &coms ) {
                 }
             }
 
-            //close(parent_write);
             close(redirect_fd);
         }
 
-        if ( pid == -1 ) {
-            perror("Error forking");
-        }
-
         if ( piping ) {
-            close(fd[1]);
+            close(fd[PIPE_WRITE_END]);
             read_from = fd[PIPE_READ_END];
         }
 
-//        if ( i == n - 1 ) {
+        if ( i == n - 1 ) {
             waitpid(pid, NULL, 0);
-//        }
+        }
 
 //            if ( coms[i+1].pd == '|' ) {
 //                // Handle piping between commands
@@ -218,7 +221,9 @@ int myshell::doFork(
         const Command &com,
         std::string filename, // = ""
         bool redirect_in, // = false
-        bool redirect_out // = false
+        bool redirect_out, // = false
+        int pread_from, // = 0,
+        int pwrite_to // = 1
 ) {
 
     pid_t pid;
@@ -269,6 +274,7 @@ int myshell::doFork(
         // -----------------------------------------------------------------------------------------
 
         if ( redirect_in ) {
+            close(pwrite_to);
             // redirecting file to process
 
 //            int ret;
