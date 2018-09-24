@@ -19,12 +19,20 @@ void myshell::run( void ) {
         std::cout << std::endl << "ms>";
         getline(std::cin, input);
 
+        // check
+        if ( std::cin.eof() ) {
+            break;
+        }
+
         if ( input == "exit" ) break;
 
         tokens = tokenizor::tokenize( input );
         commands = interpretor::interpret( tokens );
         execute( commands );
     } while ( true );
+
+    std::cout << "Closing myshell" << std::endl;
+    std::cout << "Bye" << std::endl;
 }
 
 void myshell::execute( const std::vector<Command> &coms ) {
@@ -363,12 +371,30 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
 
 void CD::cdExec( const Command &com ) {
 
-    if ( com.args[1] == "-" ) {
+    if ( com.args.size() == 1 ) {
+        char *temp = getenv("HOME");
+
+        // check if the getenv call failed
+        if ( temp == NULL ) {
+            perror("Error executing command: ");
+            return;
+        }
+
+        // change the cwd to "home"
+        if ( chdir( temp ) == -1 ) {
+            perror("Error executing command: ");
+            return;
+        }
+
+    }
+    // change the cwd to the previous cwd
+    else if ( com.args[1] == "-" ) {
         if ( chdir( pwd ) == -1 ) {
             perror("Error executing command: ");
             return;
         }
     }
+    // change the dir to the value passed in
     else if ( chdir( com.args[1].c_str() ) == -1 ) {
         perror("Error executing command: ");
         return;
