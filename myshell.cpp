@@ -2,7 +2,11 @@
 
 myshell::myshell( void ) {
     std::cout << "Starting myshell" << std::endl;
-    getcwd(cwd, PATH_MAX);
+    getcwd(cd.cwd, PATH_MAX);
+
+    for ( int i = 0; i < PATH_MAX; ++i ) {
+        cd.pwd[i] = cd.cwd[i];
+    }
 }
 
 void myshell::run( void ) {
@@ -25,21 +29,28 @@ void myshell::run( void ) {
 
 void myshell::execute( const std::vector<Command> &coms ) {
 
+    // check if the command is valid before continuing
     if ( !validCommand( coms ) ) return;
 
-    const int PIPE_READ_END = 0;
-    const int PIPE_WRITE_END = 1;
-    auto n = coms.size();
-    bool piping = false;
-    int fd[2] = {0, };
-    int write_to = 1;
-    int read_from = 0;
-    int pwrite_to = 1;
-    int pread_from = 0;
-    int parent_write = 0;
-    //int i;
-    int pid = 0;
-    Command temp_com;
+    // check if we are cding
+    if ( coms[0].name == "cd" ) {
+        cd.cdExec( coms[0] );
+        return;
+    }
+
+    // it is a valid command and it is not a cd, so continue interpreting
+    const int PIPE_READ_END = 0;        // the read end of the pipe fd
+    const int PIPE_WRITE_END = 1;       // the write end of the pipe fd
+    auto n = coms.size();               // the number of commands to perform
+    bool piping = false;                // flag to indicate if we need to pipe
+    int fd[2] = {0, };                  // array to hold the fds of pipe
+    int write_to = 1;                   // the fd we need the child to write to
+    int read_from = 0;                  // the fd we need the child to read from
+    int pwrite_to = 1;                  // the fd of the pipe's write end
+    int pread_from = 0;                 // the fd of the pipe's read end
+    int parent_write = 0;               // where we want the parent to write to (for redirecting from a file)
+    int pid = 0;                        // the pid of the child process, use in waitpid
+    Command temp_com;                   // a temp command so that we can increment i inside the loop
 
     // loop through
     for ( int i = 0; i < n; ++i ) {
@@ -50,7 +61,11 @@ void myshell::execute( const std::vector<Command> &coms ) {
         std::string outfilename;        // the file we are redirecting to
         std::string procfilename;       // te file that we need to send to the child process
 
+        // first, check the next command after the current one
         if ( i + 1 < n ) {
+            // if there is a second command, we need a pipe to continue
+
+            // get the pipe file descriptors
             pipe(fd);
             piping = true;
 
@@ -61,6 +76,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
             }
             else if (coms[i + 1].pd == '<')
             {
+                // we are redirecting the data from a file
                 redirect_in = true;
                 infilename = coms[i + 1].name;
 
@@ -99,6 +115,7 @@ void myshell::execute( const std::vector<Command> &coms ) {
             }
             else if (coms[i + 1].pd == '>')
             {
+                // redirecting to a file
                 redirect_out = true;
                 procfilename = coms[i + 1].name;
                 write_to = STDOUT_FILENO;
@@ -106,17 +123,21 @@ void myshell::execute( const std::vector<Command> &coms ) {
             }
         }
 
+        // if we're on the last command, and we aren't piping, we need to write to stdout
         if ( i == n - 1 ) {
             write_to = STDOUT_FILENO;
         }
 
+        // fork the process
         pid = doFork(read_from, write_to, temp_com, procfilename, redirect_in, redirect_out, pread_from, pwrite_to);
 
+        // check for error forking
         if ( pid == -1 ) {
             perror("Error forking");
             return;
         }
 
+        // if we are redirecting from a file, we need to open it in the parent and pass it to the child
         if ( redirect_in ) {
             ssize_t size;
             size_t bufsize = 1000;
@@ -251,73 +272,6 @@ int myshell::doFork(
 
         if ( redirect_in ) {
             close(pwrite_to);
-            // redirecting file to process
-
-//            int ret;
-//            size_t bufsize = 1000;
-//            char buf[bufsize];
-//
-//            redirect_fd = open( filename.c_str(), O_RDONLY, S_IRUSR | S_IWUSR );
-//
-//            if ( redirect_fd == -1 ) {
-//                perror("error redirecting");
-//            }
-//
-//            while ( true ) {
-//                auto val = read( redirect_fd, &buf, bufsize );
-//                if ( val == -1 ) {
-//                    perror("something went wrong writing");
-//                    break;
-//                }
-//                else if ( val == 0 ){
-//                    break;
-//                }
-//                val = write( STDIN_FILENO, &buf, bufsize );
-//                if ( val == -1 && errno == EAGAIN ) {
-//                    fprintf(stderr,
-//                            "something went wrong writing %s %d %d\n",
-//                            std::strerror(errno), STDIN_FILENO, errno);
-//                    break;
-//                }
-//                else if ( val == 0 ){
-//                    break;
-//                }
-//            }
-//
-//            //close(STDIN_FILENO);
-//            close(redirect_fd);
-
-//            int ret;
-//
-//
-//            if ( redirect_fd == -1 ) {
-//                perror("error redirecting");
-//            }
-//
-//            ret = dup2( redirect_fd, STDIN_FILENO );
-//
-//            if ( ret == -1 ) {
-//                perror("error dup");
-//            }
-//
-//            std::ifstream redirect_f;
-//            redirect_f.open( filename.c_str() );
-//
-//
-//            if ( !redirect_f.is_open() ) {
-//                perror("Couldn't open file");
-//            }
-//
-//            while ( !redirect_f.eof() ) {
-//                std::string s;
-//                redirect_f >> s;
-//
-//                if ( write( STDIN_FILENO, s.c_str(), s.length() ) == -1 ) {
-//                    perror("Something happened while writing");
-//                }
-//            }
-//
-//            redirect_f.close();
         }
 
         char** arr = new char*[com.args.size() + 1];
@@ -404,10 +358,25 @@ std::vector<Command> interpretor::interpret( const std::vector<std::string> &com
     //temp_command.args.push_back( nullptr );
     command_list.push_back( temp_command );
 
-//    for ( int i = 0; i < command_list.size(); ++i ) {
-//        std::cout << "Command: "<< command_list[i].name << " " << command_list[i].pd << std::endl;
-//        std::cout << "args: " << command_list[i].args << std::endl;
-//    }
-
     return command_list;
+}
+
+void CD::cdExec( const Command &com ) {
+
+    if ( com.args[1] == "-" ) {
+        if ( chdir( pwd ) == -1 ) {
+            perror("Error executing command: ");
+            return;
+        }
+    }
+    else if ( chdir( com.args[1].c_str() ) == -1 ) {
+        perror("Error executing command: ");
+        return;
+    }
+
+    for ( int i = 0; i < PATH_MAX; ++i ) {
+        pwd[i] = cwd[i];
+    }
+
+    getcwd( cwd, PATH_MAX );
 }

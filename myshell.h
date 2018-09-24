@@ -32,6 +32,13 @@ struct tokenizor {
     static std::vector<std::string> tokenize( const std::string &s );
 };
 
+struct CD {
+    char cwd[PATH_MAX] = {0, };
+    char pwd[PATH_MAX] = {0, };
+
+    void cdExec( const Command &com );
+};
+
 class myshell {
 public:
     myshell( void );
@@ -49,7 +56,7 @@ public:
             int pwrite_to = 1);
 private:
     std::string input;
-    char cwd[PATH_MAX] = {0, };
+    CD cd;
 };
 
 #endif //MYSHELL_H
